@@ -30,12 +30,13 @@
     
     // KASlideshow
     _slideshow.delegate = self;
+    _slideshow.repeatable = YES;
     [_slideshow setDelay:1]; // Delay between transitions
     [_slideshow setTransitionDuration:.5]; // Transition duration
-    [_slideshow setTransitionType:KASlideShowTransitionFade]; // Choose a transition type (fade or slide)
+    [_slideshow setTransitionType:KASlideShowTransitionSlide]; // Choose a transition type (fade or slide)
     [_slideshow setImagesContentMode:UIViewContentModeScaleAspectFill]; // Choose a content mode for images to display
     [_slideshow addImagesFromResources:@[@"test_1.jpeg",@"test_2.jpeg",@"test_3.jpeg"]]; // Add images from resources
-    [_slideshow addGesture:KASlideShowGestureTap]; // Gesture to go previous/next directly on the image
+    [_slideshow addGesture:KASlideShowGesturePan]; // Gesture to go previous/next directly on the image
     
 }
 

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="6254" systemVersion="14D87h" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="7706" systemVersion="14D136" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES">
     <dependencies>
         <deployment identifier="iOS"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="6247"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="7703"/>
     </dependencies>
     <objects>
         <placeholder placeholderIdentifier="IBFilesOwner" id="-1" userLabel="File's Owner" customClass="ViewController">
@@ -68,12 +68,17 @@
                     </connections>
                 </button>
                 <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="45" customClass="KASlideShow">
-                    <rect key="frame" x="140" y="113" width="320" height="184"/>
+                    <rect key="frame" x="0.0" y="113" width="600" height="184"/>
                     <color key="backgroundColor" white="0.75" alpha="1" colorSpace="custom" customColorSpace="calibratedWhite"/>
                     <constraints>
-                        <constraint firstAttribute="width" constant="320" id="WFx-Ye-n9c"/>
+                        <constraint firstAttribute="width" constant="600" id="WFx-Ye-n9c"/>
                         <constraint firstAttribute="height" constant="184" id="gas-UA-qo6"/>
                     </constraints>
+                    <variation key="default">
+                        <mask key="constraints">
+                            <exclude reference="WFx-Ye-n9c"/>
+                        </mask>
+                    </variation>
                 </view>
                 <segmentedControl opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="left" contentVerticalAlignment="top" segmentControlStyle="plain" selectedSegmentIndex="0" translatesAutoresizingMaskIntoConstraints="NO" id="tRI-1m-TZn">
                     <rect key="frame" x="256" y="50" width="89" height="29"/>
@@ -95,8 +100,10 @@
                 <constraint firstAttribute="centerX" secondItem="45" secondAttribute="centerX" id="BMD-1v-jXu"/>
                 <constraint firstItem="47" firstAttribute="leading" secondItem="6" secondAttribute="leading" constant="17" id="BVx-dE-DsQ"/>
                 <constraint firstAttribute="centerX" secondItem="tRI-1m-TZn" secondAttribute="centerX" id="N5v-0g-i4Z"/>
+                <constraint firstAttribute="trailing" secondItem="45" secondAttribute="trailing" id="RM5-DV-NDT"/>
                 <constraint firstAttribute="centerX" secondItem="36" secondAttribute="centerX" id="Wop-Fe-hUZ"/>
                 <constraint firstItem="tRI-1m-TZn" firstAttribute="top" secondItem="6" secondAttribute="top" constant="50" id="bgD-WH-b5T"/>
+                <constraint firstItem="45" firstAttribute="leading" secondItem="6" secondAttribute="leading" id="o0A-uf-Pgf"/>
                 <constraint firstAttribute="trailing" secondItem="48" secondAttribute="trailing" constant="20" id="oYW-hz-ldp"/>
                 <constraint firstItem="48" firstAttribute="top" secondItem="45" secondAttribute="bottom" constant="30" id="p5Q-hB-Wja"/>
                 <constraint firstItem="36" firstAttribute="top" secondItem="45" secondAttribute="bottom" constant="30" id="rSY-XU-0EG"/>
