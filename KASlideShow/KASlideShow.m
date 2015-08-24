@@ -24,9 +24,15 @@ typedef NS_ENUM(NSInteger, KASlideShowSlideMode) {
     KASlideShowSlideModeBackward
 };
 
+typedef NS_ENUM(NSInteger, KASlidePanGestureDirection) {
+    KASlidePanRight,
+    KASLidePanLeft
+};
+
 @interface KASlideShow()
 @property (atomic) BOOL doStop;
 @property (atomic) BOOL isAnimating;
+@property (nonatomic) BOOL isPanGestureSlide;
 @property (strong,nonatomic) UIImageView * topImageView;
 @property (strong,nonatomic) UIImageView * bottomImageView;
 @end
@@ -100,13 +106,7 @@ typedef NS_ENUM(NSInteger, KASlideShowSlideMode) {
     [self setImagesContentMode:UIViewContentModeScaleAspectFit];
     
     [self addSubview:_bottomImageView];
-    [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|[view]|" options:0 metrics:nil views:@{@"view":_bottomImageView}]];
-    [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|[view]|" options:0 metrics:nil views:@{@"view":_bottomImageView}]];
-    
     [self addSubview:_topImageView];
-    
-    [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|[view]|" options:0 metrics:nil views:@{@"view":_topImageView}]];
-    [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|[view]|" options:0 metrics:nil views:@{@"view":_topImageView}]];
     
 }
 
@@ -148,6 +148,13 @@ typedef NS_ENUM(NSInteger, KASlideShowSlideMode) {
     self.gestureRecognizers = nil;
 }
 
+- (void) addImagesWithPath:(NSArray *) paths
+{
+    for(NSString * path in paths){
+        [self addImage:[UIImage imageWithContentsOfFile:path]];
+    }
+}
+
 - (void) addImagesFromResources:(NSArray *) names
 {
     for(NSString * name in names){
@@ -172,20 +179,40 @@ typedef NS_ENUM(NSInteger, KASlideShowSlideMode) {
     }
 }
 
-- (void) emptyAndAddImagesFromResources:(NSArray *)names
+- (void) emptyImages
 {
     [self.images removeAllObjects];
+}
+
+- (void) emptyAndAddImagesFromResources:(NSArray *)names
+{
+    [self emptyImages];
     _currentIndex = 0;
     [self addImagesFromResources:names];
 }
 
-- (void) emptyAndAddImages:(NSArray *)images
+- (void) emptyAndAddImages:(NSArray *) newImages
 {
     [self.images removeAllObjects];
     _currentIndex = 0;
-    for (UIImage *image in images){
+    for (UIImage *image in newImages){
         [self addImage:image];
     }
+}
+
+- (int) getPreviousIndex
+{
+    if(_currentIndex == 0){
+        return [self.images count] - 1;
+    }else{
+        return (_currentIndex-1)%[self.images count];
+    }
+
+}
+
+- (int) getNextIndex
+{
+    return (_currentIndex+1)%[self.images count];
 }
 
 - (void) start
@@ -206,7 +233,7 @@ typedef NS_ENUM(NSInteger, KASlideShowSlideMode) {
             _topImageView.image = [self.dataSource slideShow:self imageForPosition:KASlideShowPositionTop];
             _bottomImageView.image = [self.dataSource slideShow:self imageForPosition:KASlideShowPositionBottom];
         } else {
-            NSUInteger nextIndex = (_currentIndex+1)%[self.images count];
+            NSUInteger nextIndex = [self getNextIndex];
             _topImageView.image = self.images[_currentIndex];
             _bottomImageView.image = self.images[nextIndex];
             _currentIndex = nextIndex;
@@ -219,9 +246,12 @@ typedef NS_ENUM(NSInteger, KASlideShowSlideMode) {
                 break;
                 
             case KASlideShowTransitionSlide:
-                [self animateSlide:KASlideShowSlideModeForward];
+                if(_isPanGestureSlide){
+                    [self animatePanSlide:KASlideShowSlideModeForward];
+                } else {
+                    [self animateSlide:KASlideShowSlideModeForward];
+                }
                 break;
-                
         }
         
         // Call delegate
@@ -231,6 +261,8 @@ typedef NS_ENUM(NSInteger, KASlideShowSlideMode) {
                 [delegate kaSlideShowDidShowNext:self];
             });
         }
+        
+        _isPanGestureSlide = NO;
     }
 }
 
@@ -245,12 +277,7 @@ typedef NS_ENUM(NSInteger, KASlideShowSlideMode) {
             _topImageView.image = [self.dataSource slideShow:self imageForPosition:KASlideShowPositionTop];
             _bottomImageView.image = [self.dataSource slideShow:self imageForPosition:KASlideShowPositionBottom];
         } else {
-            NSUInteger prevIndex;
-            if(_currentIndex == 0){
-                prevIndex = [self.images count] - 1;
-            }else{
-                prevIndex = (_currentIndex-1)%[self.images count];
-            }
+            NSUInteger prevIndex = [self getPreviousIndex];
             _topImageView.image = self.images[_currentIndex];
             _bottomImageView.image = self.images[prevIndex];
             _currentIndex = prevIndex;
@@ -263,7 +290,11 @@ typedef NS_ENUM(NSInteger, KASlideShowSlideMode) {
                 break;
                 
             case KASlideShowTransitionSlide:
-                [self animateSlide:KASlideShowSlideModeBackward];
+                if(_isPanGestureSlide){
+                    [self animatePanSlide:KASlideShowSlideModeBackward];
+                } else {
+                    [self animateSlide:KASlideShowSlideModeBackward];
+                }
                 break;
         }
         
@@ -274,6 +305,8 @@ typedef NS_ENUM(NSInteger, KASlideShowSlideMode) {
                 [delegate kaSlideShowDidShowPrevious:self];
             });
         }
+        
+        _isPanGestureSlide = NO;
     }
     
 }
@@ -306,35 +339,28 @@ typedef NS_ENUM(NSInteger, KASlideShowSlideMode) {
     _isAnimating = YES;
     
     if(mode == KASlideShowSlideModeBackward){
-        _bottomImageView.transform = CGAffineTransformMakeTranslation(- _bottomImageView.frame.size.width + _topImageView.frame.origin.x, 0);
+        _bottomImageView.transform = CGAffineTransformMakeTranslation(- _bottomImageView.frame.size.width, 0);
     }else if(mode == KASlideShowSlideModeForward){
-        _bottomImageView.transform = CGAffineTransformMakeTranslation(_bottomImageView.frame.size.width + _topImageView.frame.origin.x, 0);
+        _bottomImageView.transform = CGAffineTransformMakeTranslation(_bottomImageView.frame.size.width, 0);
     }
-    NSLog(@"%f", _bottomImageView.frame.origin.x);
-    NSLog(@"%f", _topImageView.frame.origin.x);
-
+    
+    
     [UIView animateWithDuration:transitionDuration
                      animations:^{
                          
                          if(mode == KASlideShowSlideModeBackward){
-                             _topImageView.transform = CGAffineTransformMakeTranslation( _topImageView.frame.size.width + _topImageView.frame.origin.x, 0);
+                             _topImageView.transform = CGAffineTransformMakeTranslation( _topImageView.frame.size.width, 0);
                              _bottomImageView.transform = CGAffineTransformMakeTranslation(0, 0);
                          }else if(mode == KASlideShowSlideModeForward){
-                             int translate = -_topImageView.frame.size.width - _topImageView.frame.origin.x;
-                             _topImageView.transform = CGAffineTransformMakeTranslation(translate, 0);
-                             _bottomImageView.transform = CGAffineTransformMakeTranslation(-_bottomImageView.frame.origin.x + _bottomImageView.frame.size.width, 0);
+                             _topImageView.transform = CGAffineTransformMakeTranslation(- _topImageView.frame.size.width, 0);
+                             _bottomImageView.transform = CGAffineTransformMakeTranslation(0, 0);
                          }
-                         NSLog(@"%f", _bottomImageView.frame.origin.x);
-                         NSLog(@"%f", _topImageView.frame.origin.x);
                      }
                      completion:^(BOOL finished){
                          
                          _topImageView.image = _bottomImageView.image;
                          _topImageView.transform = CGAffineTransformMakeTranslation(0, 0);
-//                         _topImageView.frame = CGRectMake(self.frame.origin.x, _topImageView.frame.origin.y, _topImageView.frame.size.width, _topImageView.frame.size.height);
-//                         _bottomImageView.frame = _topImageView.frame;
-                         NSLog(@"%f", _bottomImageView.frame.origin.x);
-                         NSLog(@"%f", _topImageView.frame.origin.x);
+                         
                          _isAnimating = NO;
                          
                          if(! _doStop){
@@ -343,6 +369,51 @@ typedef NS_ENUM(NSInteger, KASlideShowSlideMode) {
                          }
                      }];
 }
+
+-(void)animatePanSlideBack:(KASlidePanGestureDirection) mode
+{
+    [UIView animateWithDuration:transitionDuration/2
+                     animations:^{
+                         if(mode == KASLidePanLeft){
+                             _topImageView.frame = CGRectMake(0, _topImageView.frame.origin.y, _topImageView.frame.size.width, _topImageView.frame.size.height);
+                             _bottomImageView.frame = CGRectMake(_bottomImageView.frame.size.width, _bottomImageView.frame.origin.y, _bottomImageView.frame.size.width, _bottomImageView.frame.size.height);
+                         }else if(mode == KASlidePanRight){
+                             _topImageView.frame = CGRectMake(0, _topImageView.frame.origin.y, _topImageView.frame.size.width, _topImageView.frame.size.height);
+                             _bottomImageView.frame = CGRectMake(-_bottomImageView.frame.size.width, _bottomImageView.frame.origin.y, _bottomImageView.frame.size.width, _bottomImageView.frame.size.height);
+                         }
+                         
+                         
+                     }
+                     completion:^(BOOL finished){
+                         
+                         
+                     }];
+    
+}
+
+-(void)animatePanSlide:(KASlideShowSlideMode) mode
+{
+    [UIView animateWithDuration:transitionDuration
+                     animations:^{
+                         if(mode == KASlideShowSlideModeBackward){
+                             _topImageView.frame = CGRectMake(_topImageView.frame.size.width, _topImageView.frame.origin.y, _topImageView.frame.size.width, _topImageView.frame.size.height);
+                             _bottomImageView.frame = CGRectMake(0, _bottomImageView.frame.origin.y, _bottomImageView.frame.size.width, _bottomImageView.frame.size.height);
+                         }else if(mode == KASlideShowSlideModeForward){
+                             _topImageView.frame = CGRectMake(-_topImageView.frame.size.width, _topImageView.frame.origin.y, _topImageView.frame.size.width, _topImageView.frame.size.height);
+                             _bottomImageView.frame = CGRectMake(0, _bottomImageView.frame.origin.y, _bottomImageView.frame.size.width, _bottomImageView.frame.size.height);
+                         }
+                         
+                         
+                     }
+                     completion:^(BOOL finished){
+            
+                         _topImageView.image = _bottomImageView.image;
+                         _topImageView.frame = CGRectMake(0, _topImageView.frame.origin.y, _topImageView.frame.size.width, _topImageView.frame.size.height);
+                         
+                     }];
+    
+}
+
 
 
 - (void) stop
@@ -378,8 +449,12 @@ typedef NS_ENUM(NSInteger, KASlideShowSlideMode) {
 
 - (void) addGesturePan
 {
-    UIPanGestureRecognizer *panGestureRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
-    [self addGestureRecognizer:panGestureRecognizer];
+    if(transitionType != KASlideShowTransitionFade){
+        UIPanGestureRecognizer *panGestureRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
+        [self addGestureRecognizer:panGestureRecognizer];
+    } else {
+        [self addGestureTap];
+    }
 }
 
 #pragma mark - Gesture Recognizers handling
@@ -417,33 +492,42 @@ typedef NS_ENUM(NSInteger, KASlideShowSlideMode) {
 -(void)handlePan:(UIPanGestureRecognizer *)sender
 {
     
-    CGPoint translation = [sender translationInView:self.topImageView];
-    
-    if(sender.state == UIGestureRecognizerStateChanged){
-        
-        
-        int startPoint = self.frame.origin.x - self.frame.size.width + translation.x;
-        self.topImageView.frame = CGRectMake(translation.x, self.topImageView.frame.origin.y, self.frame.size.width, self.frame.size.height);
-        if(self.topImageView.center.x < self.center.x){
-            startPoint = self.frame.size.width + translation.x;
-        }
-        self.bottomImageView.frame = CGRectMake(startPoint, self.bottomImageView.frame.origin.y, self.frame.size.width, self.frame.size.height);
-//        self.bottomImageView
-//        self.topImageView.image = self.images[_currentIndex];
-//        self.bottomImageView.image = self.images[_currentIndex+1];
-
+    _isPanGestureSlide = YES;
+    KASlidePanGestureDirection panDirection = KASlidePanRight;
+    CGPoint velocity = [sender velocityInView:self];
+    if(velocity.x < 0){
+        panDirection = KASLidePanLeft;
     }
     
-    if(sender.state == UIGestureRecognizerStateEnded){
-//        if(translation.x >= self.center.x){
-//            [self previous];
-//        } else {
-//            [self next];
-//        }
-        [self next];
+    if(!(!repeatable && _currentIndex == 0 && panDirection == KASlidePanRight) && !(!repeatable && _currentIndex == images.count - 1 && panDirection == KASLidePanLeft) ){
+        CGPoint translation = [sender translationInView:self.topImageView];
+        if(sender.state == UIGestureRecognizerStateChanged){
+            
+            int startPoint = self.frame.origin.x - self.frame.size.width + translation.x;
+            self.topImageView.frame = CGRectMake(translation.x, self.topImageView.frame.origin.y, self.frame.size.width, self.frame.size.height);
+            if(panDirection == KASLidePanLeft){
+                startPoint = self.frame.size.width + translation.x;
+                self.bottomImageView.image = self.images[[self getNextIndex]];
+            } else {
+                self.bottomImageView.image = self.images[[self getPreviousIndex]];
+            }
+            self.bottomImageView.frame = CGRectMake(startPoint, self.bottomImageView.frame.origin.y, self.frame.size.width, self.frame.size.height);
+            
+            
+        }
+        if(sender.state == UIGestureRecognizerStateEnded){
+            
+            if(translation.x > self.center.x){
+                [self previous];
+            } else if(-translation.x > self.center.x){
+                [self next];
+            } else {
+                [self animatePanSlideBack:panDirection];
+            }
+        }
+
     }
 }
-
 
 @end
 
